@@ -1,6 +1,6 @@
 # Kata: Word Chains
 
-[original Kata on [codekata.com](http://codekata.com/kata/kata19-word-chains/)
+original Kata on [codekata.com](http://codekata.com/kata/kata19-word-chains/)
 
 ## problem description
 
