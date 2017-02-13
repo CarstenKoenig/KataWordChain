@@ -18,78 +18,79 @@ import qualified Data.HashSet as S
 import System.IO (BufferMode(NoBuffering), hSetBuffering, stdout)
 
 
-type Wörterbuch = HashMap String (HashSet String)
+type Dictionary = HashMap String (HashSet String)
 
 
 main :: IO ()
 main = do
   hSetBuffering stdout NoBuffering
   
-  putStr "erstelle Wörterbuch..."
-  !wörterbuch <- erstelleWörterbuch <$> wörter
-  putStrLn "fertig"
+  putStr "creating dictionary..."
+  !wörterbuch <- createDictionary <$> readWords
+  putStrLn "done"
   repl wörterbuch
 
 
-repl :: Wörterbuch -> IO ()
-repl wörterbuch = do
-  putStr "Von: "
-  von <- getLine
-  putStr "Nach: "
-  if null von then do
+repl :: Dictionary -> IO ()
+repl dict = do
+  putStr "Start-Word: "
+  start <- getLine
+  putStr "Goal-Word: "
+  if null start then do
     putStrLn "bye..."
   else do
-    nach <- getLine
-    case findePfad wörterbuch (von, nach) of
-      Nothing -> putStrLn "Kein Weg gefunden"
-      Just pfad -> print pfad
-    repl wörterbuch
+    goal <- getLine
+    case findPath dict (start, goal) of
+      Nothing -> putStrLn "found no path"
+      Just path -> print path
+    repl dict
 
 
-findePfad :: Wörterbuch -> (String, String) -> Maybe [String]
-findePfad wörterbuch (von, nach) = suche wörterbuch nach S.empty [[von]]
+findPath :: Dictionary -> (String, String) -> Maybe [String]
+findPath dict (start, goal) =
+  breadthFirstSearch dict goal S.empty [[start]]
 
 
-suche :: Wörterbuch -> String -> HashSet String -> [[String]] -> Maybe [String]
-suche _ _ _ [] = Nothing
-suche wörterbuch nach visited (pfad @ (von:_) : nexts)
-  | von == nach = Just $ reverse pfad
-  | von `S.member` visited = suche wörterbuch nach visited nexts
+breadthFirstSearch :: Dictionary -> String -> HashSet String -> [[String]] -> Maybe [String]
+breadthFirstSearch _ _ _ [] = Nothing
+breadthFirstSearch dict word visited (path @ (start:_) : nexts)
+  | start == word = Just $ reverse path
+  | start `S.member` visited = breadthFirstSearch dict word visited nexts
   | otherwise =
-      let visited' = S.insert von visited
-          nexts' = map (:pfad) $ kinder wörterbuch von
-      in suche wörterbuch nach visited' (nexts ++ nexts')
+      let visited' = S.insert start visited
+          nexts' = map (:path) $ childNodes dict start
+      in breadthFirstSearch dict word visited' (nexts ++ nexts')
 
 
-kinder :: Wörterbuch -> String -> [String]
-kinder wörterbuch wort = do
-  k <- keys wort
-  case M.lookup k wörterbuch of
+childNodes :: Dictionary -> String -> [String]
+childNodes dict word = do
+  k <- keys word
+  case M.lookup k dict of
     Nothing -> pure []
-    Just set -> filter (/= wort) (S.toList set)
+    Just set -> filter (/= word) (S.toList set)
 
 
-erstelleWörterbuch :: [String] -> Wörterbuch
-erstelleWörterbuch =
-  M.filter ((> 1) . S.size) . foldl' einfügen M.empty
+createDictionary :: [String] -> Dictionary
+createDictionary =
+  M.filter ((> 1) . S.size) . foldl' insertWord M.empty
 
 
-einfügen :: Wörterbuch -> String -> Wörterbuch
-einfügen wörterbuch wort =
-  foldl' (\m k -> M.alter insert k m) wörterbuch $ keys wort
-  where insert = Just . S.insert wort . fromMaybe S.empty
+insertWord :: Dictionary -> String -> Dictionary
+insertWord dict word =
+  foldl' (\m k -> M.alter insert k m) dict $ keys word
+  where insert = Just . S.insert word . fromMaybe S.empty
 
 
-wörter :: IO [String]
-wörter =
-  map kanonisch .
+readWords :: IO [String]
+readWords =
+  map normalize .
   filter ((>= 3) . length) .
   lines <$>
   readFile "c:/temp/wordlist.txt"
 
 
-kanonisch :: String -> String
-kanonisch = map toLower
+normalize :: String -> String
+normalize = map toLower . takeWhile (/= '\'')
 
 
 keys :: String -> [String]
