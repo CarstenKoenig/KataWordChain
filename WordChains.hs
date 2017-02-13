@@ -2,9 +2,13 @@
 
 module Main where
 
+
 import Control.Monad (guard)
 
 import Data.Char (toLower)
+import Data.Text (Text)
+import qualified Data.Text as T
+import qualified Data.Text.IO as TIO
 
 import Data.List (sort, foldl')
 import Data.Maybe (fromMaybe)
@@ -14,10 +18,6 @@ import qualified Data.HashMap.Strict as M
 
 import Data.HashSet (HashSet)
 import qualified Data.HashSet as S
-
-import Data.Text (Text)
-import qualified Data.Text as T
-import qualified Data.Text.IO as TIO
 
 import System.IO (BufferMode(NoBuffering), hSetBuffering, stdout)
 
@@ -76,13 +76,20 @@ childNodes dict word = do
 
 createDictionary :: [Text] -> Dictionary
 createDictionary =
-  M.filter ((> 1) . S.size) . foldl' insertWord M.empty
+  foldl' insertWord M.empty
 
 
 insertWord :: Dictionary -> Text -> Dictionary
 insertWord dict word =
   foldl' (\m k -> M.alter insert k m) dict $ keys word
   where insert = Just . S.insert word . fromMaybe S.empty
+
+
+keys :: Text -> [Text]
+keys input = map keyAt [0..T.length input - 1]
+  where keyAt i =
+          let (l,r) = T.splitAt i input
+          in T.concat [l, "_", T.drop 1 r]
 
 
 readWords :: IO [Text]
@@ -95,10 +102,3 @@ readWords =
 
 normalize :: Text -> Text
 normalize = T.toLower . T.takeWhile (/= '\'')
-
-
-keys :: Text -> [Text]
-keys input = map keyAt [0..T.length input - 1]
-  where keyAt i =
-          let (l,r) = T.splitAt i input
-          in T.concat [l, "_", T.drop 1 r]
