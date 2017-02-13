@@ -97,7 +97,7 @@ readWords =
   map normalize .
   filter ((>= 3) . T.length) .
   T.lines <$>
-  TIO.readFile "c:/temp/wordlist.txt"
+  TIO.readFile "./wordlist.txt"
 
 
 normalize :: Text -> Text
