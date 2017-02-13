@@ -30,9 +30,9 @@ main = do
   hSetBuffering stdout NoBuffering
   
   putStr "creating dictionary..."
-  !wörterbuch <- createDictionary <$> readWords
+  !dict <- createDictionary <$> readWords
   putStrLn "done"
-  repl wörterbuch
+  repl dict
 
 
 repl :: Dictionary -> IO ()
