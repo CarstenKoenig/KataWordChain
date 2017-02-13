@@ -81,7 +81,7 @@ createDictionary =
 
 insertWord :: Dictionary -> Text -> Dictionary
 insertWord dict word =
-  foldl' (\m k -> M.alter insert k m) dict $ keys word
+  foldl' (flip $ M.alter insert) dict $ keys word
   where insert = Just . S.insert word . fromMaybe S.empty
 
 
