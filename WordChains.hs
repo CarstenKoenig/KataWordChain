@@ -1,4 +1,4 @@
-{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE BangPatterns, OverloadedStrings #-}
 
 module Main where
 
@@ -15,10 +15,14 @@ import qualified Data.HashMap.Strict as M
 import Data.HashSet (HashSet)
 import qualified Data.HashSet as S
 
+import Data.Text (Text)
+import qualified Data.Text as T
+import qualified Data.Text.IO as TIO
+
 import System.IO (BufferMode(NoBuffering), hSetBuffering, stdout)
 
 
-type Dictionary = HashMap String (HashSet String)
+type Dictionary = HashMap Text (HashSet Text)
 
 
 main :: IO ()
@@ -34,24 +38,24 @@ main = do
 repl :: Dictionary -> IO ()
 repl dict = do
   putStr "Start-Word: "
-  start <- getLine
+  start <- TIO.getLine
   putStr "Goal-Word: "
-  if null start then do
+  if T.null start then do
     putStrLn "bye..."
   else do
-    goal <- getLine
+    goal <- TIO.getLine
     case findPath dict (start, goal) of
       Nothing -> putStrLn "found no path"
       Just path -> print path
     repl dict
 
 
-findPath :: Dictionary -> (String, String) -> Maybe [String]
+findPath :: Dictionary -> (Text, Text) -> Maybe [Text]
 findPath dict (start, goal) =
   breadthFirstSearch dict goal S.empty [[start]]
 
 
-breadthFirstSearch :: Dictionary -> String -> HashSet String -> [[String]] -> Maybe [String]
+breadthFirstSearch :: Dictionary -> Text -> HashSet Text -> [[Text]] -> Maybe [Text]
 breadthFirstSearch _ _ _ [] = Nothing
 breadthFirstSearch dict word visited (path @ (start:_) : nexts)
   | start == word = Just $ reverse path
@@ -62,38 +66,39 @@ breadthFirstSearch dict word visited (path @ (start:_) : nexts)
       in breadthFirstSearch dict word visited' (nexts ++ nexts')
 
 
-childNodes :: Dictionary -> String -> [String]
+childNodes :: Dictionary -> Text -> [Text]
 childNodes dict word = do
   k <- keys word
   case M.lookup k dict of
-    Nothing -> pure []
+    Nothing -> pure ""
     Just set -> filter (/= word) (S.toList set)
 
 
-createDictionary :: [String] -> Dictionary
+createDictionary :: [Text] -> Dictionary
 createDictionary =
   M.filter ((> 1) . S.size) . foldl' insertWord M.empty
 
 
-insertWord :: Dictionary -> String -> Dictionary
+insertWord :: Dictionary -> Text -> Dictionary
 insertWord dict word =
   foldl' (\m k -> M.alter insert k m) dict $ keys word
   where insert = Just . S.insert word . fromMaybe S.empty
 
 
-readWords :: IO [String]
+readWords :: IO [Text]
 readWords =
   map normalize .
-  filter ((>= 3) . length) .
-  lines <$>
-  readFile "c:/temp/wordlist.txt"
+  filter ((>= 3) . T.length) .
+  T.lines <$>
+  TIO.readFile "c:/temp/wordlist.txt"
 
 
-normalize :: String -> String
-normalize = map toLower . takeWhile (/= '\'')
+normalize :: Text -> Text
+normalize = T.toLower . T.takeWhile (/= '\'')
 
 
-keys :: String -> [String]
-keys [] = []
-keys [c] = ["_"]
-keys (c:cs) = ('_':cs) : map (c:) (keys cs)
+keys :: Text -> [Text]
+keys input = map keyAt [0..T.length input - 1]
+  where keyAt i =
+          let (l,r) = T.splitAt i input
+          in T.concat [l, "_", T.drop 1 r]
